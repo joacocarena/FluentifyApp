@@ -1,5 +1,6 @@
 import 'package:fluentify/config/theme/app_theme.dart';
 import 'package:fluentify/screens/home_screen.dart';
+import 'package:fluentify/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -14,7 +15,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       theme: AppTheme().getTheme(),
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen()
+      home: const SplashScreen()
     );
   }
 }
