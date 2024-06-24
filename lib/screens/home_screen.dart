@@ -102,15 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 55,
         ),
         backgroundColor: Colors.transparent,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              onPressed: () {}, 
-              icon: const Icon(Icons.menu)
-            ),
-          )
-        ],
       ),
 
       body: SingleChildScrollView(
