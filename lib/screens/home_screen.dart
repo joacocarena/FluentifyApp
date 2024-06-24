@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:fluentify/services/translate_service.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
@@ -16,6 +18,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
   String lastWords = "";
+  String translatedText = "";
+  String sourceLang = "English"; //? default value
+  String targetLang = "Spanish"; //? default value
+  Timer? debounce;
 
   late TextEditingController controller;
 
@@ -29,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     controller.dispose();
+    debounce?.cancel();
     super.dispose();
   }
 
@@ -40,9 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void startListening() async {
     await _speechToText.listen(onResult: onSpeechResult);
-    setState(() {
-      
-    });
+    setState(() {});
   }
 
   void stopListening() async {
@@ -52,7 +57,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void onSpeechResult(SpeechRecognitionResult res) {
     setState(() {
-      lastWords = "${res.recognizedWords}";
+      lastWords = res.recognizedWords;
+      onTextChanged(lastWords);
     });
   }
 
@@ -60,13 +66,41 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       lastWords = text;
     });
+    if (debounce?.isActive ?? false) debounce?.cancel();
+    debounce = Timer(const Duration(milliseconds: 800), () {translateText(text);});
+  }
+
+  Future<void> translateText(String text) async {
+    if (text.isEmpty) {
+      setState(() {
+        translatedText = "";
+      });
+      return;
+    }
+    try {
+      final translation = await TranslateService.translateText(
+        text, 
+        TranslateService.getLanguageCode(sourceLang), 
+        TranslateService.getLanguageCode(targetLang),
+      );
+      setState(() {
+        translatedText = translation;
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print('Translation Error: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Fluentify'),
+        title: Image.asset(
+          'assets/images/logo.png',
+          fit: BoxFit.contain,
+          height: 55,
+        ),
         backgroundColor: Colors.transparent,
         actions: [
           Padding(
@@ -83,14 +117,85 @@ class _HomeScreenState extends State<HomeScreen> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.only(top: 35, left: 20),
-              child: const Align(
-                alignment: Alignment.topLeft,
-                child: Text('Translator', style: TextStyle(fontSize: 30))
+            // ignore: avoid_unnecessary_containers
+            Container( //? Language selector
+              child: Column(
+                children: [
+                  const SizedBox(height: 35),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 120,
+                        padding: const EdgeInsets.only(left: 12, right: 5),
+                        color: Colors.cyan.shade100,
+                        child: DropdownButton<String>(
+                          value: sourceLang,
+                          isExpanded: true,
+                          iconEnabledColor: Colors.blue.shade600,
+                          iconSize: 25,
+                          underline: const SizedBox(),
+                          items: TranslateService.languages.map((Map<String, String> lang) {
+                            return DropdownMenuItem<String>(
+                              value: lang['name'],
+                              child: Text(lang['name']!)
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              sourceLang = newValue!;
+                            });
+                          }
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      FaIcon(FontAwesomeIcons.arrowRightArrowLeft, color: Colors.blue.shade200, size: 28),
+                      const SizedBox(width: 15),
+
+                      Container(
+                        width: 120,
+                        padding: const EdgeInsets.only(left: 12, right: 5),
+                        color: Colors.cyan.shade100,
+                        child: DropdownButton<String>(
+                          value: targetLang,
+                          isExpanded: true,
+                          iconEnabledColor: Colors.blue.shade600,
+                          iconSize: 25,
+                          underline: const SizedBox(),
+                          items: TranslateService.languages.map((Map<String, String> lang) {
+                            return DropdownMenuItem<String>(
+                              value: lang['name'],
+                              child: Text(lang['name']!)
+                            );
+                          }).toList(), 
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              targetLang = newValue!;
+                            });
+                          }
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 8),
+                      
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        final temp = sourceLang;
+                        sourceLang = targetLang;
+                        targetLang = temp;
+                      });
+                    }, 
+                    icon: FaIcon(FontAwesomeIcons.arrowsRotate, color: Colors.blue.shade500, size: 32)
+                  )
+                ],
               ),
             ),
-            const SizedBox(height: 55),
+            const SizedBox(height: 24),
       
             //? Request box:
             MessageBox(message: lastWords),
@@ -98,17 +203,16 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             Transform.rotate(
               angle: pi/2,
-              child: FaIcon(FontAwesomeIcons.rightLeft, size: 30, color: Colors.cyan.shade400,),
+              child: FaIcon(FontAwesomeIcons.rightLeft, size: 30, color: Colors.blue.shade200,),
             ),
             const SizedBox(height: 20),
       
             //? Response box:
-            MessageBox(message: "resp"), //TODO: CHANGE THE TEXT BODY TO THE TRANSLATOR RESPONSE.
-            const SizedBox(height: 60),
+            MessageBox(message: translatedText),
       
             //? prompt:
             Container(
-              margin: const EdgeInsets.only(top: 90),
+              margin: const EdgeInsets.only(top: 60),
               child: SizedBox(
                 height: 72,
                 width: MediaQuery.of(context).size.width * .9,
@@ -202,7 +306,15 @@ class _MessageBoxState extends State<MessageBox> {
         width: 320,
         height: 160,
         color: Colors.cyan.shade100,
-        child: Center(child: Text(widget.message, style: const TextStyle(fontSize: 20))),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Center(child: Text(
+            widget.message, 
+            style: const TextStyle(fontSize: 20),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          )),
+        ),
       ),
     );
   }
