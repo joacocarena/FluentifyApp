@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:fluentify/services/translate_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -24,18 +25,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? debounce;
 
   late TextEditingController controller;
+  final ScrollController scrollController = ScrollController();
+  bool showAppBarBg = true;
 
   @override
   void initState() {
     super.initState();
     _initSpeech();
     controller = TextEditingController();
+    scrollController.addListener(onScroll);
   }
   
   @override
   void dispose() {
     controller.dispose();
     debounce?.cancel();
+    scrollController.removeListener(onScroll);
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -53,6 +59,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void stopListening() async {
     await _speechToText.stop();
     setState(() {});
+  }
+
+  void onScroll() {
+    if (scrollController.position.userScrollDirection == ScrollDirection.reverse) { // scrolling down...
+      setState(() {
+        showAppBarBg = false;
+      });
+    } else if (scrollController.position.userScrollDirection == ScrollDirection.forward) { // scrolling up
+      setState(() {
+        showAppBarBg = true;
+      });
+    }
   }
 
   void onSpeechResult(SpeechRecognitionResult res) {
@@ -96,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
+        forceMaterialTransparency: true,
+        surfaceTintColor: Colors.transparent,
         title: Image.asset(
           'assets/images/logo.png',
           fit: BoxFit.contain,
@@ -105,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: Column(
           children: [
             // ignore: avoid_unnecessary_containers
@@ -205,12 +226,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               margin: const EdgeInsets.only(top: 60),
               child: SizedBox(
-                height: 72,
+                height: 65,
                 width: MediaQuery.of(context).size.width * .9,
                 child: Stack(
                   children: [
                     Positioned(
-                      bottom: 0,
+                      bottom: 10,
                       left: 0,
                       right: 0,
                       top: 0,
@@ -264,8 +285,8 @@ class InputField extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 80,
-            width: 75,
+            height: 90,
+            width: 70,
             child: IconButton.filled(
               onPressed: speechToText.isNotListening ? startListening : stopListening,
               icon: Icon(speechToText.isNotListening ? Icons.mic_off : Icons.mic, color: Colors.white,),
