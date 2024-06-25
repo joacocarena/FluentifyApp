@@ -1,3 +1,3 @@
 # fluentify
 
-A new Flutter project.
+Translator App using MyMemory API.
